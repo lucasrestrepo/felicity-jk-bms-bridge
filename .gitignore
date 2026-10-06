@@ -1,0 +1,8 @@
+secrets.h
+secrets.yaml
+*.bin
+*.elf
+build/
+.vscode/
+.DS_Store
+__pycache__/

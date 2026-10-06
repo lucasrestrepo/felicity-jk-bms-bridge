@@ -1,0 +1,121 @@
+## OPTIONAL: read the JK BMS over Bluetooth LE (per-cell voltages) with ESPHome
+##
+## This is independent of the RS485 bridge. The Pylon RS485 protocol only
+## exposes min/max cell voltage; if you want all 16 cell voltages, use a SECOND
+## ESP32 running this ESPHome config (it uses syssi/esphome-jk-bms).
+##
+## Before compiling:
+##   1. Put your BMS MAC address in ble_client (find it with nRF Connect or by
+##      running esp32_ble_tracker alone and reading the logs; it shows as "JK-PBxxxx")
+##   2. Create secrets.yaml next to this file with wifi_ssid, wifi_password,
+##      ota_password (and api_key if you use Home Assistant)
+##
+## NOTE: the JK BMS accepts only ONE BLE connection at a time. While this ESP32
+## is connected, the phone app cannot connect.
+
+esphome:
+  name: jk-bms
+  friendly_name: JK BMS
+
+esp32:
+  board: esp32-s3-devkitc-1      # use esp32dev for a classic ESP32
+  framework:
+    type: esp-idf                # handles BLE + WiFi together better than Arduino
+
+external_components:
+  - source: github://syssi/esphome-jk-bms@main
+    refresh: 0s
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_key         # optional, only for Home Assistant
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "JK-BMS Fallback"
+    password: !secret ota_password
+
+captive_portal:
+
+web_server:
+  port: 80
+  version: 3
+
+# Optional: MQTT and Prometheus
+# mqtt:
+#   broker: 192.168.1.10
+#   topic_prefix: solar/jkbms
+#   discovery: false
+# prometheus:
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: false                # passive scan, less WiFi interference
+
+ble_client:
+  - mac_address: AA:BB:CC:DD:EE:FF   # <-- CHANGE to your BMS MAC address
+    id: jk_client
+
+jk_bms_ble:
+  - ble_client_id: jk_client
+    id: bms0
+    protocol_version: JK02_32S   # correct for JK-PB models with firmware 19.x
+    throttle: 5s
+
+sensor:
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    total_voltage:               { name: "Pack voltage" }
+    current:                     { name: "Current" }
+    power:                       { name: "Power" }
+    state_of_charge:             { name: "SOC" }
+    capacity_remaining:          { name: "Remaining capacity" }
+    charging_cycles:             { name: "Cycles" }
+    min_cell_voltage:            { name: "Min cell voltage" }
+    max_cell_voltage:            { name: "Max cell voltage" }
+    delta_cell_voltage:          { name: "Cell delta" }
+    average_cell_voltage:        { name: "Average cell voltage" }
+    min_voltage_cell:            { name: "Min cell number" }
+    max_voltage_cell:            { name: "Max cell number" }
+    balancing_current:           { name: "Balancing current" }
+    power_tube_temperature:      { name: "MOSFET temperature" }
+    temperature_sensor_1:        { name: "Temperature 1" }
+    temperature_sensor_2:        { name: "Temperature 2" }
+    cell_voltage_1:  { name: "Cell 01" }
+    cell_voltage_2:  { name: "Cell 02" }
+    cell_voltage_3:  { name: "Cell 03" }
+    cell_voltage_4:  { name: "Cell 04" }
+    cell_voltage_5:  { name: "Cell 05" }
+    cell_voltage_6:  { name: "Cell 06" }
+    cell_voltage_7:  { name: "Cell 07" }
+    cell_voltage_8:  { name: "Cell 08" }
+    cell_voltage_9:  { name: "Cell 09" }
+    cell_voltage_10: { name: "Cell 10" }
+    cell_voltage_11: { name: "Cell 11" }
+    cell_voltage_12: { name: "Cell 12" }
+    cell_voltage_13: { name: "Cell 13" }
+    cell_voltage_14: { name: "Cell 14" }
+    cell_voltage_15: { name: "Cell 15" }
+    cell_voltage_16: { name: "Cell 16" }
+
+binary_sensor:
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    balancing:    { name: "Balancing" }
+    charging:     { name: "Charging enabled" }
+    discharging:  { name: "Discharging enabled" }
+
+text_sensor:
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    errors:                  { name: "Errors" }
+    total_runtime_formatted: { name: "Runtime" }
